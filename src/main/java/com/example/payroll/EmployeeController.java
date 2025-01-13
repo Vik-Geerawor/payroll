@@ -23,9 +23,6 @@ public class EmployeeController {
     // tag::get-aggregate-root[]
     @GetMapping("/employees")
     CollectionModel<EntityModel<Employee>> all() {
-        // nonrest - returns List<Employee>
-//        return repository.findAll();
-
         // restful
         List<EntityModel<Employee>> employees = repository.findAll().stream()
                 .map(employee -> EntityModel.of(employee,
@@ -39,30 +36,31 @@ public class EmployeeController {
     // end::get-aggregate-root[]
 
     @PostMapping("/employees")
-    Employee newEmployee(@RequestBody Employee newEmployee) {
-        return repository.save(newEmployee);
+    EntityModel<Employee> newEmployee(@RequestBody Employee newEmployee) {
+        Employee employee = repository.save(newEmployee);
+
+        return EntityModel.of(employee,
+                linkTo(methodOn(EmployeeController.class).one(employee.getId())).withSelfRel(),
+                linkTo(methodOn(EmployeeController.class).all()).withRel("employees")
+                );
     }
 
     // Single item
     @GetMapping("/employees/{id}")
     EntityModel<Employee> one(@PathVariable Long id) {
-        // NonRest
-//        return repository.findById(id)
-//                .orElseThrow(() -> new EmployeeNotFoundException(id));
-
-        // Restful - return type changed to EntityModel<Employee> from Employee
+        // Restful
         Employee employee = repository.findById(id)
                 .orElseThrow(() -> new EmployeeNotFoundException(id));
 
         return EntityModel.of(employee,
                 linkTo(methodOn(EmployeeController.class).one(id)).withSelfRel(),
-                linkTo(methodOn(EmployeeController.class).all()).withRel("employees"));
+                linkTo(methodOn(EmployeeController.class).all()).withRel("All employees"));
     }
 
     @PutMapping("/employees/{id}")
-    Employee replaceEmployee(@RequestBody Employee newEmployee, @PathVariable Long id) {
+    EntityModel<Employee> replaceEmployee(@RequestBody Employee newEmployee, @PathVariable Long id) {
 
-        return repository.findById(id)
+        Employee updatedEmployee = repository.findById(id)
                 .map(employee -> {
                     employee.setName(newEmployee.getName());
                     employee.setRole(newEmployee.getRole());
@@ -71,6 +69,11 @@ public class EmployeeController {
                 .orElseGet(() -> {
                     return repository.save(newEmployee);
                 });
+
+        return EntityModel.of(updatedEmployee,
+                linkTo(methodOn(EmployeeController.class).one(id)).withSelfRel(),
+                linkTo(methodOn(EmployeeController.class).all()).withRel("All employees")
+                );
     }
 
     @DeleteMapping("/employees/{id}")
